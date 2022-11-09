@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+  node-fc:
+    build: 
+      context: ./node
+    container_name: node-fc
+    tty: true
+    networks: 
+      - nodenet
+    depends_on: 
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:5.7
+    command: --innodb-use-native-aio=0
+    container_name: db
+    restart: always
+    tty: true
+    volumes: 
+      - ./mysql:/var/lib/mysql
+    environment: 
+      - MYSQL_DATABASE=nodedb
+      - MYSQL_ROOT_PASSWORD=root
+    networks: 
+      - nodenet 
+    healthcheck:
+      test: mysqladmin ping -h 127.0.0.1 -u root --password=$$MYSQL_ROOT_PASSWORD
+      start_period: 5s
+      interval: 5s
+      timeout: 5s
+      retries: 55
+
+  proxy:
+    build: 
+      context: ./nginx
+    container_name: nginx
+    networks: 
+      - nodenet
+    ports: 
+        - "8080:80"
+    depends_on: 
+      - node-fc  
+
+networks:
+  nodenet:
+    driver: bridge
